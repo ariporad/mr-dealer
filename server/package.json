@@ -1,0 +1,41 @@
+{
+	"name": "mr-dealer-server",
+	"version": "1.0.0",
+	"description": "The Server for Mr. Dealer",
+	"main": "dist/index.js",
+	"repository": "https://github.com/ariporad/mr-dealer",
+	"author": "Ari Porad <ari@ariporad.com>",
+	"license": "MIT",
+	"private": true,
+	"scripts": {
+		"prerun": "npm run build",
+		"run": "node ./dist/index.js",
+		"build": "tsc",
+		"watch": "tsc --watch",
+		"clean": "rm -rf dist",
+		"prestart": "npm run clean && npm run build",
+		"start": "concurrently -c bgBlue,bgGreen.black -k -n tsc,bot \"tsc --watch\" \"nodemon -w dist dist/index.js\"",
+		"format": "prettier --write src/*.ts src/**/*.ts"
+	},
+	"devDependencies": {
+		"@types/express": "^4.17.6",
+		"@types/jsonwebtoken": "^8.5.0",
+		"@types/node": "^14.0.1",
+		"@types/request-promise": "^4.1.46",
+		"@types/socket.io": "^2.1.10",
+		"concurrently": "^5.2.0",
+		"nodemon": "^2.0.4",
+		"prettier": "^2.0.5",
+		"typescript": "^3.9.2"
+	},
+	"dependencies": {
+		"@reduxjs/toolkit": "^1.4.0",
+		"dotenv": "^8.2.0",
+		"express": "^4.17.1",
+		"jsonwebtoken": "^8.5.1",
+		"redux": "^4.0.5",
+		"request": "^2.88.2",
+		"request-promise": "^4.2.5",
+		"socket.io": "^2.3.0"
+	}
+}
