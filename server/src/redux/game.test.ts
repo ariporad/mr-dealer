@@ -12,13 +12,13 @@ beforeEach(() => {
 describe('Game Reducer', () => {
 	it('addUser', () => {
 		expect(getState().players.length).toBe(0);
-		dispatch(addUser({ uuid: 'uuid-0', name: 'Ari Porad' }));
+		dispatch(addUser({ name: 'Ari Porad' }));
 		expect(getState().players).toEqual([
 			{ uuid: 'uuid-0', name: 'Ari Porad', id: 0, folded: false, bets: [], hand: null },
 		]);
-		dispatch(addUser({ uuid: 'uuid-1', name: 'Neb Scherzer' }));
-		dispatch(addUser({ uuid: 'uuid-2', name: 'Sophie G-H' }));
-		dispatch(addUser({ uuid: 'uuid-3', name: 'Beth Ginsberg' }));
+		dispatch(addUser({ name: 'Neb Scherzer' }));
+		dispatch(addUser({ name: 'Sophie G-H' }));
+		dispatch(addUser({ name: 'Beth Ginsberg' }));
 		expect(getState().players).toEqual([
 			{ uuid: 'uuid-0', name: 'Ari Porad', id: 0, folded: false, bets: [], hand: null },
 			{ uuid: 'uuid-1', name: 'Neb Scherzer', id: 1, folded: false, bets: [], hand: null },

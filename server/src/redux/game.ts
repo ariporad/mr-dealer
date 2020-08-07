@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createSelector, Action, current } from '@reduxjs/toolkit';
 import { RootState } from '.';
+import { create } from 'domain';
 
 type Card = string;
 type Deck = Card[];
@@ -13,6 +14,8 @@ export enum GameStatus {
 	RIVER = 4,
 	ENDED = 5,
 }
+
+const ANTE_AMOUNT = 1;
 
 const CARD_VALUES = '234567890JQKA'.split('');
 const CARD_SUITS = 'HDSC'.split('');
@@ -44,7 +47,6 @@ const getShuffledDeck = (): Deck => {
 
 export interface PlayerState {
 	readonly id: number;
-	readonly uuid: string;
 	readonly name: string;
 
 	folded: boolean;
@@ -66,16 +68,16 @@ const initialState: GameState = {
 	table: [],
 };
 
-type AddUserAction = PayloadAction<{ uuid: string; name: string }>;
+type AddUserAction = PayloadAction<{ name: string }>;
 type AdvanceAction = PayloadAction<{ fold: boolean; amount: number }>;
 
 const { reducer, actions, name } = createSlice({
 	name: 'game',
 	initialState,
 	reducers: {
-		addUser(state, { payload: { uuid, name } }: AddUserAction) {
+		addUser(state, { payload: { name } }: AddUserAction) {
 			const id = state.players.length;
-			state.players.push({ uuid, name, id, folded: false, bets: [], hand: null });
+			state.players.push({ name, id, folded: false, bets: [], hand: null });
 		},
 
 		start(state) {
@@ -85,7 +87,7 @@ const { reducer, actions, name } = createSlice({
 				(player): PlayerState => ({
 					...player,
 					folded: false,
-					bets: [],
+					bets: [ANTE_AMOUNT],
 					hand: [deck.pop() || '', deck.pop() || ''],
 				}),
 			);
@@ -104,15 +106,19 @@ const { reducer, actions, name } = createSlice({
 			if (fold) {
 				player.folded = true;
 			} else {
-				player.bets.push(amount);
+				player.bets[state.status] = amount;
 			}
 			do {
 				state.currentPlayer++;
+
 				if (state.currentPlayer === state.players.length) {
 					state.currentPlayer = 0;
-					state.status++;
+					// FIXME: Hacky way to call selector from within a reducer
+					if (getPotIsRight.resultFunc(state, getCurrentBet.resultFunc(state))) {
+						state.status++;
+					}
 				}
-			} while (!state.players[state.currentPlayer].folded && state.status < GameStatus.ENDED);
+			} while (state.players[state.currentPlayer].folded && state.status < GameStatus.ENDED);
 		},
 	},
 });
@@ -141,6 +147,37 @@ export const getCurrentPlayer = createSelector(
 );
 
 export const getGameStatus = createSelector(getGameState, (state) => state.status);
+
+export const getNextPlayerId = createSelector(getGameState, (state) => state.players.length);
+
+export const getUpdateForPlayer = (playerId: number) =>
+	createSelector([getGameState, getVisibleCards], (state, visibleCards) => {
+		const thisPlayer = state.players[playerId];
+
+		return {
+			id: thisPlayer.id,
+			name: thisPlayer.name,
+			hand: thisPlayer.hand,
+			table: visibleCards,
+			currentPlayer: state.currentPlayer,
+			status: state.status,
+			players: state.players.map(({ id, name, folded, bets }) => ({
+				id,
+				name,
+				folded,
+				bets,
+			})),
+		};
+	});
+export const getCurrentBet = createSelector(getGameState, ({ players, status }) =>
+	Math.max(0, ...players.map((player) => (player.folded ? -1 : player.bets[status] || 0))),
+);
+
+export const getPotIsRight = createSelector([getGameState, getCurrentBet], (state, bet) => {
+	const { players } = state;
+
+	return players.every((player) => player.folded || player.bets[player.bets.length - 1] === bet);
+});
 
 export const { addUser, start, advance } = actions;
 export { name };
