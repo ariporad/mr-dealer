@@ -25,9 +25,18 @@ export interface PlayerController {
 	sendBet(amount: number): void;
 	sendFold(): void;
 	isHost(): boolean;
+	getCurrentPlayer(): number;
+	getId(): number;
+	isCurrentPlayer(): boolean;
+	didFold(): boolean;
+	getGameId(): string;
 }
 
-export function createPlayerController({ name, gameId, isHost }: PlayerControllerOptions) {
+export function createPlayerController({
+	name,
+	gameId,
+	isHost,
+}: PlayerControllerOptions): PlayerController {
 	if (!gameId && !isHost) {
 		throw new Error('PlayerController must provide either a gameId or be a host');
 	}
@@ -38,6 +47,7 @@ export function createPlayerController({ name, gameId, isHost }: PlayerControlle
 
 	socket.on('update', (update: GameUpdate) => {
 		gameUpdate = update;
+		gameId = update.gameId;
 		subscriptions.forEach((sub) => sub());
 	});
 
@@ -80,6 +90,26 @@ export function createPlayerController({ name, gameId, isHost }: PlayerControlle
 
 		isHost() {
 			return this.getGameUpdate().id === 0;
+		},
+
+		getCurrentPlayer() {
+			return this.getGameUpdate().currentPlayer;
+		},
+
+		getId() {
+			return this.getGameUpdate().id;
+		},
+
+		isCurrentPlayer() {
+			return this.getCurrentPlayer() === this.getId();
+		},
+
+		didFold() {
+			return this.getGameUpdate().players[this.getId()].folded;
+		},
+
+		getGameId(): string {
+			return gameId || this.getGameUpdate().gameId;
 		},
 	};
 }
@@ -141,7 +171,7 @@ export function usePlayerController(): PlayerController {
 		return playerController.subscribe(() => {
 			setDummyState(count++);
 		});
-	}, []);
+	}, [playerController]);
 
 	return playerController;
 }

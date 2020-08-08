@@ -12,43 +12,59 @@ import {
 	PlayerControllerProvider,
 } from './PlayerController';
 
-function ControlPanelBody() {
-	const gameUpdate = usePlayerController().getGameUpdate();
+function ControlPanelBody({ onJoin }: { onJoin: (gameId: string) => void }) {
+	const playerController = usePlayerController();
+	const gameUpdate = playerController.getGameUpdate();
+
+	onJoin(gameUpdate.gameId);
 
 	return (
-		<>
+		<div
+			className={[
+				'control-panel',
+				playerController.isCurrentPlayer() && 'control-panel-current-player',
+				playerController.didFold() && 'control-panel-folded',
+			]
+				.filter((x) => !!x)
+				.join(' ')}
+		>
 			<h2>
 				#{gameUpdate.id}: {gameUpdate.name} ({gameUpdate.id === 0 && 'Host, '}
 				{gameUpdate.gameId})
 			</h2>
 			{gameUpdate.status === GameStatus.PRESTART ? <LobbyView /> : <PlayView />}
-		</>
+		</div>
 	);
 }
 
-export default function ControlPanel() {
+interface ControlPanelProps {
+	knownGames: string[];
+	onJoin: (gameId: string) => void;
+
+	defaultName?: string;
+}
+
+export default function ControlPanel({ knownGames, onJoin, defaultName }: ControlPanelProps) {
 	const [playerController, setPlayerController] = useState<PlayerController | null>(null);
 
 	if (playerController === null) {
 		return (
-			<div className="control-panel">
-				<GameSelector
-					createGame={(name: string) => {
-						setPlayerController(createPlayerController({ name, isHost: true }));
-					}}
-					joinGame={(name: string, gameId: string) => {
-						setPlayerController(createPlayerController({ name, gameId }));
-					}}
-				/>
-			</div>
+			<GameSelector
+				createGame={(name: string) => {
+					setPlayerController(createPlayerController({ name, isHost: true }));
+				}}
+				joinGame={(name: string, gameId: string) => {
+					setPlayerController(createPlayerController({ name, gameId }));
+				}}
+				knownGames={knownGames}
+				defaultName={defaultName}
+			/>
 		);
 	}
 
 	return (
-		<div className="control-panel">
-			<PlayerControllerProvider playerController={playerController}>
-				<ControlPanelBody />
-			</PlayerControllerProvider>
-		</div>
+		<PlayerControllerProvider playerController={playerController}>
+			<ControlPanelBody onJoin={onJoin} />
+		</PlayerControllerProvider>
 	);
 }

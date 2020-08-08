@@ -8,15 +8,15 @@ export default function PlayView() {
 	const [bet, setBet] = useState<string>('');
 
 	return (
-		<ul>
-			<li>Game Status: {gameUpdate.status}</li>
-			<li>
+		<>
+			<p>Game Status: {gameUpdate.status}</p>
+			<p>
 				{gameUpdate.currentPlayer === gameUpdate.id && '(Your Turn) '}
 				[#{gameUpdate.id}]: {gameUpdate.hand[0]} {gameUpdate.hand[1]}
-			</li>
-			<li>Table: {gameUpdate.table.join(' ')} </li>
-			<li>Current Player: {gameUpdate.currentPlayer}</li>
-			<li>
+			</p>
+			<p>Table: {gameUpdate.table.join(' ')} </p>
+			<p>Current Player: {gameUpdate.currentPlayer}</p>
+			<p>
 				<h3>Players:</h3>
 				<table>
 					<thead>
@@ -25,7 +25,7 @@ export default function PlayView() {
 							<th>Name</th>
 							<th>Folded?</th>
 							<th>Ante</th>
-							<th>Pre-Flop</th>
+							<th>Pre</th>
 							<th>Flop</th>
 							<th>Turn</th>
 							<th>River</th>
@@ -54,8 +54,9 @@ export default function PlayView() {
 						))}
 					</tbody>
 				</table>
-			</li>
-			<li>
+			</p>
+			<br />
+			<p>
 				<label htmlFor="betAmount">Bet:</label>
 				<input
 					type="number"
@@ -77,7 +78,7 @@ export default function PlayView() {
 					}}
 				/>
 				<input type="button" value="Fold" onClick={playerController.sendFold} />
-			</li>
-		</ul>
+			</p>
+		</>
 	);
 }
