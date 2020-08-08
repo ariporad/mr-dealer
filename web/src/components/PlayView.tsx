@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePlayerController } from './PlayerController';
+import Card, { CardContainer } from './Card';
 
 export default function PlayView() {
 	const playerController = usePlayerController();
@@ -9,12 +10,15 @@ export default function PlayView() {
 
 	return (
 		<>
+			{gameUpdate.hand && <CardContainer cards={gameUpdate.hand} />}
+			{gameUpdate.table.length > 0 && (
+				<>
+					<hr />
+					<CardContainer cards={gameUpdate.table} />
+				</>
+			)}
+			<hr />
 			<p>Game Status: {gameUpdate.status}</p>
-			<p>
-				{gameUpdate.currentPlayer === gameUpdate.id && '(Your Turn) '}
-				[#{gameUpdate.id}]: {gameUpdate.hand[0]} {gameUpdate.hand[1]}
-			</p>
-			<p>Table: {gameUpdate.table.join(' ')} </p>
 			<p>Current Player: {gameUpdate.currentPlayer}</p>
 			<p>
 				<h3>Players:</h3>
@@ -68,7 +72,7 @@ export default function PlayView() {
 					type="button"
 					value="Bet"
 					onClick={() => {
-						const amount = parseInt(bet.trim(), 10);
+						const amount = bet.trim() === '' ? 0 : parseInt(bet.trim(), 10);
 						if (isNaN(amount)) {
 							alert(`Invalid Bet! Must be a number! You said: "${bet}"!`);
 							return;

@@ -4,12 +4,16 @@
  *
  * It's included via a `/// <reference path="../../../../shared.d.ts" />` directive
  */
+type Card = number;
+
+type Deck = Card[];
+type Hand = [Card, Card];
 
 interface GameUpdate {
 	gameId: string;
 	id: number;
 	name: string;
-	hand: Hand;
+	hand: Hand | null;
 	table: Card[];
 	currentPlayer: number;
 	status: GameStatus;

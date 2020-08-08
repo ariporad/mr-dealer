@@ -1,15 +1,6 @@
 import io from 'socket.io-client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-// HACK: Enums don't work in shared.d.ts, so keep this in sync with the server's version.
-export enum GameStatus {
-	PRESTART = 0,
-	PREFLOP = 1,
-	FLOP = 2,
-	TURN = 3,
-	RIVER = 4,
-	ENDED = 5,
-}
+import { GameStatus } from '../types';
 
 interface PlayerControllerOptions {
 	name: string;
@@ -27,6 +18,7 @@ export interface PlayerController {
 	isHost(): boolean;
 	getCurrentPlayer(): number;
 	getId(): number;
+	getStatus(): GameStatus;
 	isCurrentPlayer(): boolean;
 	didFold(): boolean;
 	getGameId(): string;
@@ -100,8 +92,16 @@ export function createPlayerController({
 			return this.getGameUpdate().id;
 		},
 
+		getStatus() {
+			return this.hasGameUpdate() ? this.getGameUpdate().status : GameStatus.PRESTART;
+		},
+
 		isCurrentPlayer() {
-			return this.getCurrentPlayer() === this.getId();
+			return (
+				this.getStatus() >= GameStatus.PREFLOP &&
+				this.getStatus() < GameStatus.ENDED &&
+				this.getCurrentPlayer() === this.getId()
+			);
 		},
 
 		didFold() {

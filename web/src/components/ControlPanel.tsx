@@ -1,11 +1,9 @@
-/// <reference path="../../../shared.d.ts" />
-
 import React, { useState } from 'react';
+import { GameStatus } from '../types';
 import PlayView from './PlayView';
 import { GameSelector } from './GameSelector';
 import LobbyView from './LobbyView';
 import {
-	GameStatus,
 	usePlayerController,
 	PlayerController,
 	createPlayerController,

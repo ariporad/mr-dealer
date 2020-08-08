@@ -1,22 +1,31 @@
 /// <reference path="../../../shared.d.ts" />
 
-import { createSlice, PayloadAction, createSelector, Action, current } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createSelector } from '@reduxjs/toolkit';
 import { RootState } from '.';
-
-type Card = string;
-type Deck = Card[];
-type Hand = [Card, Card];
 
 const ANTE_AMOUNT = 1;
 
-const CARD_VALUES = '234567890JQKA'.split('');
-const CARD_SUITS = 'HDSC'.split('');
-const DEFAULT_DECK: Deck = [];
+export enum CardSuit {
+	HEART = 0b0001,
+	DIAMOND = 0b0010,
+	CLUB = 0b0100,
+	SPADE = 0b1000,
+}
 
-for (let suit of CARD_SUITS) {
-	for (let value of CARD_VALUES) {
-		DEFAULT_DECK.push(value + suit);
-	}
+export enum CardValue {
+	TWO = 2 << 4,
+	THREE = 3 << 4,
+	FOUR = 4 << 4,
+	FIVE = 5 << 4,
+	SIX = 6 << 4,
+	SEVEN = 7 << 4,
+	EIGHT = 8 << 4,
+	NINE = 9 << 4,
+	TEN = 10 << 4,
+	JACK = 11 << 4,
+	QUEEN = 12 << 4,
+	KING = 13 << 4,
+	ACE = 14 << 4,
 }
 
 export enum GameStatus {
@@ -26,6 +35,16 @@ export enum GameStatus {
 	TURN = 3,
 	RIVER = 4,
 	ENDED = 5,
+}
+
+const DEFAULT_DECK: Deck = [];
+
+for (let suit of Object.values(CardSuit)) {
+	if (typeof suit !== 'number') continue;
+	for (let value of Object.values(CardValue)) {
+		if (typeof value !== 'number') continue;
+		DEFAULT_DECK.push(value | suit);
+	}
 }
 
 const getShuffledDeck = (): Deck => {
@@ -89,15 +108,15 @@ const { reducer, actions, name } = createSlice({
 					...player,
 					folded: false,
 					bets: [ANTE_AMOUNT],
-					hand: [deck.pop() || '', deck.pop() || ''],
+					hand: [deck.pop() || 0, deck.pop() || 0],
 				}),
 			);
 			state.table = [
-				deck.pop() || '',
-				deck.pop() || '',
-				deck.pop() || '',
-				deck.pop() || '',
-				deck.pop() || '',
+				deck.pop() || 0,
+				deck.pop() || 0,
+				deck.pop() || 0,
+				deck.pop() || 0,
+				deck.pop() || 0,
 			];
 			state.currentPlayer = 0;
 		},
