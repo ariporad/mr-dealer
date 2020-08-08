@@ -131,13 +131,15 @@ const { reducer, actions, name } = createSlice({
 			do {
 				state.currentPlayer++;
 
-				if (state.currentPlayer === state.players.length) {
-					state.currentPlayer = 0;
+				if (
 					// FIXME: Hacky way to call selector from within a reducer
-					if (getPotIsRight.resultFunc(state, getCurrentBet.resultFunc(state))) {
-						state.status++;
-					}
+					getPotIsRight.resultFunc(state, getCurrentBet.resultFunc(state))
+				) {
+					state.status++;
+					state.currentPlayer = 0;
 				}
+
+				if (state.currentPlayer === state.players.length) state.currentPlayer = 0;
 			} while (state.players[state.currentPlayer].folded && state.status < GameStatus.ENDED);
 		},
 	},
@@ -197,11 +199,17 @@ export const getCurrentBet = createSelector(getGameState, ({ players, status }) 
 	Math.max(0, ...players.map((player) => (player.folded ? -1 : player.bets[status] || 0))),
 );
 
-export const getPotIsRight = createSelector([getGameState, getCurrentBet], (state, bet) => {
-	const { players } = state;
-
-	return players.every((player) => player.folded || player.bets[player.bets.length - 1] === bet);
-});
+export const getPotIsRight = createSelector(
+	[getGameState, getCurrentBet],
+	({ players, status }, bet) => {
+		return players.every((player) => {
+			if (player.folded) return true;
+			// If the player hasn't bet this round
+			if (player.bets.length - 1 < status) return false;
+			return player.bets[status] === bet;
+		});
+	},
+);
 
 export const { addUser, start, advance } = actions;
 export { name };
