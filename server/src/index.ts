@@ -1,3 +1,4 @@
+/// <reference path="../../shared.d.ts" />
 import 'dotenv/config';
 import { createServer } from 'http';
 import { resolve } from 'path';
@@ -47,8 +48,6 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 	const id = getNextPlayerId(game.getState());
 	game.dispatch(addUser({ name }));
 
-	socket.emit('joined', { id, gameId });
-
 	socket.on('advance', ({ amount, fold }: { amount: number; fold: boolean }) => {
 		if (id !== getCurrentPlayer(game.getState()).id) {
 			socket.emit('err', { code: 'EBADMOVE', message: 'Move out of turn!' });
@@ -63,7 +62,7 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 			return;
 		}
 
-		if (amount < getCurrentBet(game.getState())) {
+		if (!fold && amount < getCurrentBet(game.getState())) {
 			socket.emit('err', {
 				code: 'EBADBET',
 				message: `You must bet at least the prevous bet! (Currently $${getCurrentBet(
@@ -77,21 +76,24 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 	});
 
 	game.subscribe(() => {
-		socket.emit('update', getUpdateForPlayer(id)(game.getState()));
+		socket.emit('update', getUpdateForPlayer(id, gameId)(game.getState()));
 	});
+
+	socket.emit('joined', { id, gameId });
+	socket.emit('update', getUpdateForPlayer(id, gameId)(game.getState()));
 }
 
 io.on('connection', (socket) => {
 	console.log('Socket connected');
 
-	socket.on('start-game', ({ name }: { name: string }) => {
+	socket.on('create-game', ({ name }: { name: string }) => {
 		console.log('Starting Game!', name);
 		const gameId = randomLetter() + randomLetter() + randomLetter() + randomLetter();
 		const store = createStore();
 		games.set(gameId, store);
 		addUserToGame(socket, name, gameId);
 
-		socket.on('start', () => {
+		socket.on('start-game', () => {
 			if (getGameStatus(store.getState()) === GameStatus.PRESTART) {
 				store.dispatch(start());
 			}
@@ -103,7 +105,7 @@ io.on('connection', (socket) => {
 		});
 	});
 
-	socket.on('info', ({ name, gameId }: { name: string; gameId: string }) => {
+	socket.on('join-game', ({ name, gameId }: { name: string; gameId: string }) => {
 		addUserToGame(socket, name, gameId);
 	});
 });

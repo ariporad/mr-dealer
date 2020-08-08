@@ -1,19 +1,11 @@
+/// <reference path="../../../shared.d.ts" />
+
 import { createSlice, PayloadAction, createSelector, Action, current } from '@reduxjs/toolkit';
 import { RootState } from '.';
-import { create } from 'domain';
 
 type Card = string;
 type Deck = Card[];
 type Hand = [Card, Card];
-
-export enum GameStatus {
-	PRESTART = 0,
-	PREFLOP = 1,
-	FLOP = 2,
-	TURN = 3,
-	RIVER = 4,
-	ENDED = 5,
-}
 
 const ANTE_AMOUNT = 1;
 
@@ -25,6 +17,15 @@ for (let suit of CARD_SUITS) {
 	for (let value of CARD_VALUES) {
 		DEFAULT_DECK.push(value + suit);
 	}
+}
+
+export enum GameStatus {
+	PRESTART = 0,
+	PREFLOP = 1,
+	FLOP = 2,
+	TURN = 3,
+	RIVER = 4,
+	ENDED = 5,
 }
 
 const getShuffledDeck = (): Deck => {
@@ -150,25 +151,29 @@ export const getGameStatus = createSelector(getGameState, (state) => state.statu
 
 export const getNextPlayerId = createSelector(getGameState, (state) => state.players.length);
 
-export const getUpdateForPlayer = (playerId: number) =>
-	createSelector([getGameState, getVisibleCards], (state, visibleCards) => {
-		const thisPlayer = state.players[playerId];
+export const getUpdateForPlayer = (playerId: number, gameId: string) =>
+	createSelector(
+		[getGameState, getVisibleCards],
+		(state, visibleCards): GameUpdate => {
+			const thisPlayer = state.players[playerId];
 
-		return {
-			id: thisPlayer.id,
-			name: thisPlayer.name,
-			hand: thisPlayer.hand,
-			table: visibleCards,
-			currentPlayer: state.currentPlayer,
-			status: state.status,
-			players: state.players.map(({ id, name, folded, bets }) => ({
-				id,
-				name,
-				folded,
-				bets,
-			})),
-		};
-	});
+			return {
+				gameId,
+				id: thisPlayer.id,
+				name: thisPlayer.name,
+				hand: thisPlayer.hand,
+				table: visibleCards,
+				currentPlayer: state.currentPlayer,
+				status: state.status,
+				players: state.players.map(({ id, name, folded, bets }) => ({
+					id,
+					name,
+					folded,
+					bets,
+				})),
+			};
+		},
+	);
 export const getCurrentBet = createSelector(getGameState, ({ players, status }) =>
 	Math.max(0, ...players.map((player) => (player.folded ? -1 : player.bets[status] || 0))),
 );
