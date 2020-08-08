@@ -1,6 +1,6 @@
 /// <reference path="../../shared.d.ts" />
 import 'dotenv/config';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import { resolve } from 'path';
 import socketIO, { Socket } from 'socket.io';
 import express from 'express';
@@ -41,72 +41,111 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 	const game = games.get(gameId);
 
 	if (!game) {
-		socket.emit('err', { code: 'EBADGAMEID', message: 'Invalid Game ID' });
+		socket.send({
+			type: 'err',
+			code: 'EBADGAMEID',
+			message: 'Invalid Game ID',
+		} as ServerMessage);
 		return;
 	}
 
 	const id = getNextPlayerId(game.getState());
 	game.dispatch(addUser({ name }));
 
-	socket.on('advance', ({ amount, fold }: { amount: number; fold: boolean }) => {
-		if (id !== getCurrentPlayer(game.getState()).id) {
-			socket.emit('err', { code: 'EBADMOVE', message: 'Move out of turn!' });
-			return;
-		}
+	socket.on('message', (msg: ClientMessage) => {
+		if (msg.type === 'start-game') {
+			if (id !== 0) {
+				socket.send({
+					type: 'err',
+					code: 'EBADPERMS',
+					message: 'Only the host can start the game!',
+				} as ServerMessage);
+				return;
+			}
+			if (getGameStatus(game.getState()) !== GameStatus.PRESTART) {
+				socket.send({
+					type: 'err',
+					code: 'EBADCMD',
+					message: 'Tried to start a game that has already begun!',
+				} as ServerMessage);
+				return;
+			}
+			game.dispatch(start());
+		} else if (msg.type === 'advance') {
+			const { amount, fold } = msg;
 
-		if (
-			getGameStatus(game.getState()) < GameStatus.PREFLOP ||
-			getGameStatus(game.getState()) >= GameStatus.ENDED
-		) {
-			socket.emit('err', { code: 'EBADMOVE', message: 'Move at invalid time!' });
-			return;
-		}
+			if (id !== getCurrentPlayer(game.getState()).id) {
+				socket.send({
+					type: 'err',
+					code: 'EBADMOVE',
+					message: 'Move out of turn!',
+				} as ServerMessage);
+				return;
+			}
 
-		if (!fold && amount < getCurrentBet(game.getState())) {
-			socket.emit('err', {
-				code: 'EBADBET',
-				message: `You must bet at least the prevous bet! (Currently $${getCurrentBet(
-					game.getState(),
-				)})`,
-			});
-			return;
-		}
+			if (
+				getGameStatus(game.getState()) < GameStatus.PREFLOP ||
+				getGameStatus(game.getState()) >= GameStatus.ENDED
+			) {
+				socket.send({
+					type: 'err',
+					code: 'EBADMOVE',
+					message: 'Move at invalid time!',
+				} as ServerMessage);
+				return;
+			}
 
-		game.dispatch(advance({ amount, fold }));
+			if (!fold && amount < getCurrentBet(game.getState())) {
+				socket.send({
+					type: 'err',
+					code: 'EBADBET',
+					message: `You must bet at least the prevous bet! (Currently $${getCurrentBet(
+						game.getState(),
+					)})`,
+				} as ServerMessage);
+				return;
+			}
+
+			game.dispatch(advance({ amount, fold }));
+		}
 	});
 
 	game.subscribe(() => {
-		socket.emit('update', getUpdateForPlayer(id, gameId)(game.getState()));
+		socket.send({
+			type: 'update',
+			update: getUpdateForPlayer(id, gameId)(game.getState()),
+		} as ServerMessage);
 	});
 
-	socket.emit('joined', { id, gameId });
-	socket.emit('update', getUpdateForPlayer(id, gameId)(game.getState()));
+	socket.send({
+		type: 'update',
+		update: getUpdateForPlayer(id, gameId)(game.getState()),
+	} as ServerMessage);
 }
 
 io.on('connection', (socket) => {
 	console.log('Socket connected');
 
-	socket.on('create-game', ({ name }: { name: string }) => {
-		console.log('Starting Game!', name);
-		const gameId = randomLetter() + randomLetter() + randomLetter() + randomLetter();
-		const store = createStore();
-		games.set(gameId, store);
-		addUserToGame(socket, name, gameId);
+	socket.on('message', (msg: ClientMessage) => {
+		if (msg.type === 'create-game') {
+			const { name } = msg;
 
-		socket.on('start-game', () => {
-			if (getGameStatus(store.getState()) === GameStatus.PRESTART) {
-				store.dispatch(start());
-			}
-		});
+			console.log('Creating Game!', name);
 
-		store.subscribe(() => {
-			console.log(`State Update for Game ${gameId}:`);
-			console.log(store.getState());
-		});
-	});
+			const gameId = randomLetter() + randomLetter() + randomLetter() + randomLetter();
 
-	socket.on('join-game', ({ name, gameId }: { name: string; gameId: string }) => {
-		addUserToGame(socket, name, gameId);
+			const store = createStore();
+			games.set(gameId, store);
+
+			addUserToGame(socket, name, gameId);
+
+			store.subscribe(() => {
+				console.log(`State Update for Game ${gameId}:`);
+				console.log(store.getState());
+			});
+		} else if (msg.type === 'join-game') {
+			addUserToGame(socket, msg.name, msg.gameId);
+		}
 	});
 });
 

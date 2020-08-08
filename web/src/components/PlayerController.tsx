@@ -37,16 +37,25 @@ export function createPlayerController({
 	let gameUpdate: GameUpdate | null;
 	let subscriptions: (() => void)[] = [];
 
-	socket.on('update', (update: GameUpdate) => {
-		gameUpdate = update;
-		gameId = update.gameId;
-		subscriptions.forEach((sub) => sub());
+	socket.on('message', (msg: ServerMessage) => {
+		switch (msg.type) {
+			case 'update':
+				gameUpdate = msg.update;
+				gameId = msg.update.gameId;
+				subscriptions.forEach((sub) => sub());
+				break;
+			case 'err':
+				alert(`[${name}]: ${msg.message} (${msg.code})`);
+				break;
+			default:
+				console.error('Unknown Message:', msg);
+		}
 	});
 
 	if (isHost) {
-		socket.emit('create-game', { name });
+		socket.send({ type: 'create-game', name } as ClientMessage);
 	} else {
-		socket.emit('join-game', { name, gameId });
+		socket.send({ type: 'join-game', name, gameId } as ClientMessage);
 	}
 
 	return {
@@ -69,15 +78,15 @@ export function createPlayerController({
 		},
 
 		startGame() {
-			socket.emit('start-game');
+			socket.send({ type: 'start-game' } as ClientMessage);
 		},
 
 		sendBet(amount: number) {
-			socket.emit('advance', { amount, fold: false });
+			socket.send({ type: 'advance', amount, fold: false } as ClientMessage);
 		},
 
 		sendFold() {
-			socket.emit('advance', { amount: 0, fold: true });
+			socket.send({ type: 'advance', amount: 0, fold: true } as ClientMessage);
 		},
 
 		isHost() {

@@ -34,4 +34,14 @@ enum GameStatus {
 	ENDED = 5,
 }
 
-type ClientCommand = {};
+type ClientMessage = CreateGameMessage | JoinGameMessage | AdvanceMessage | StartGameMessage;
+type CreateGameMessage = { type: 'create-game'; name: string };
+type JoinGameMessage = { type: 'join-game'; name: string; gameId: string };
+type AdvanceMessage = { type: 'advance'; amount: number; fold: boolean };
+type StartGameMessage = { type: 'start-game' };
+
+type ErrorCode = 'EBADMOVE' | 'EBADGAMEID' | 'EBADBET' | 'EBADPERMS' | 'EBADCMD';
+
+type ServerMessage = ErrorMessage | GameUpdateMessage;
+type ErrorMessage = { type: 'err'; code: ErrorCode; message: string };
+type GameUpdateMessage = { type: 'update'; update: GameUpdate };
