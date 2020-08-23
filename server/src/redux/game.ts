@@ -12,6 +12,9 @@ export enum CardSuit {
 	SPADE = 0b1000,
 }
 
+export const CARD_SUIT_BITMASK = 0b1111;
+export const CARD_VALUE_BITMASK = ~CARD_SUIT_BITMASK;
+
 export enum CardValue {
 	TWO = 2 << 4,
 	THREE = 3 << 4,
@@ -210,6 +213,64 @@ export const getPotIsRight = createSelector(
 		});
 	},
 );
+
+const suitMappings: { [key: string]: CardSuit } = {
+	H: CardSuit.HEART,
+	D: CardSuit.DIAMOND,
+	C: CardSuit.CLUB,
+	S: CardSuit.SPADE,
+};
+
+const valueMappings: { [key: string]: CardValue } = {
+	'2': CardValue.TWO,
+	'3': CardValue.THREE,
+	'4': CardValue.FOUR,
+	'5': CardValue.FIVE,
+	'6': CardValue.SIX,
+	'7': CardValue.SEVEN,
+	'8': CardValue.EIGHT,
+	'9': CardValue.NINE,
+	'0': CardValue.TEN,
+	J: CardValue.JACK,
+	Q: CardValue.QUEEN,
+	K: CardValue.KING,
+	A: CardValue.ACE,
+};
+
+export const cardFromString = (cardStr: string): Card => {
+	const value = valueMappings[cardStr[0]];
+	const suit = suitMappings[cardStr[1]];
+	return suit | value;
+};
+
+export const cardsFromString = (cardsStr: string): Card[] => {
+	const cardStrs = cardsStr.split(' ');
+
+	if (!cardStrs.every((cardStr) => cardStr.length === 2)) {
+		throw new Error('Invalid Card String: ' + cardsStr);
+	}
+
+	return cardStrs.map(cardFromString);
+};
+
+export const cardToString = (card: Card): string => {
+	let suit = '?';
+	if (card & CardSuit.CLUB) suit = 'C';
+	if (card & CardSuit.SPADE) suit = 'S';
+	if (card & CardSuit.HEART) suit = 'H';
+	if (card & CardSuit.DIAMOND) suit = 'D';
+
+	let value = (card >> 4).toString(10);
+
+	if (value === '11') value = 'J';
+	if (value === '12') value = 'Q';
+	if (value === '13') value = 'K';
+	if (value === '14') value = 'A';
+
+	return `${value}${suit}`;
+};
+
+export const cardsToString = (cards: Card[]): string => cards.map(cardToString).join(' ');
 
 export const { addUser, start, advance } = actions;
 export { name };
