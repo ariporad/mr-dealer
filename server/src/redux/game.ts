@@ -237,20 +237,26 @@ const valueMappings: { [key: string]: CardValue } = {
 	A: CardValue.ACE,
 };
 
-export const cardFromString = (cardStr: string): Card => {
+export const cardFromString = (cardStr: string, allowAdvanced: boolean = false): Card => {
 	const value = valueMappings[cardStr[0]];
-	const suit = suitMappings[cardStr[1]];
+	const suit = !allowAdvanced
+		? suitMappings[cardStr[1]]
+		: cardStr
+				.slice(1)
+				.split('')
+				.map((suit) => (suit === 'X' ? CARD_SUIT_BITMASK : suitMappings[suit]))
+				.reduce((suit, acc) => acc | suit, 0);
 	return suit | value;
 };
 
-export const cardsFromString = (cardsStr: string): Card[] => {
+export const cardsFromString = (cardsStr: string, allowAdvanced: boolean = true): Card[] => {
 	const cardStrs = cardsStr.split(' ');
 
-	if (!cardStrs.every((cardStr) => cardStr.length === 2)) {
+	if (!allowAdvanced && !cardStrs.every((cardStr) => cardStr.length === 2)) {
 		throw new Error('Invalid Card String: ' + cardsStr);
 	}
 
-	return cardStrs.map(cardFromString);
+	return cardStrs.map((cardStr) => cardFromString(cardStr, allowAdvanced));
 };
 
 export const cardToString = (card: Card): string => {

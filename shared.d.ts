@@ -45,3 +45,28 @@ type ErrorCode = 'EBADMOVE' | 'EBADGAMEID' | 'EBADBET' | 'EBADPERMS' | 'EBADCMD'
 type ServerMessage = ErrorMessage | GameUpdateMessage;
 type ErrorMessage = { type: 'err'; code: ErrorCode; message: string };
 type GameUpdateMessage = { type: 'update'; update: GameUpdate };
+
+type ResultBase<T extends string> = { type: T; priority: number; cards: Card[] };
+
+type Result =
+	| HighResult
+	| PairResult
+	| TwoPairResult
+	| ThreeKindResult
+	| StraightResult
+	| FlushResult
+	| FullHouseResult
+	| FourKind
+	| StraightFlushResult;
+
+type HighResult = ResultBase<'high'>;
+type PairResult = ResultBase<'pair'>;
+type TwoPairResult = ResultBase<'two-pair'>;
+type ThreeKindResult = ResultBase<'three-kind'>;
+type StraightResult = ResultBase<'straight'>;
+type FlushResult = ResultBase<'flush'>;
+type FullHouseResult = ResultBase<'full-house'>;
+type FourKind = ResultBase<'four-kind'>;
+type StraightFlushResult = ResultBase<'straight-flush'>;
+
+type ResultType = Result extends ResultBase<infer T> ? T : never;

@@ -1,73 +1,40 @@
-import { CardValue, cardsToString, CARD_SUIT_BITMASK, CARD_VALUE_BITMASK } from './redux/game';
-
-export type ResultBase<T extends string> = { type: T; priority: number; cards: Card[] };
-
-export type Result =
-	| StraightFlushResult
-	| FourKind
-	| FullHouseResult
-	| FlushResult
-	| StraightResult
-	| ThreeKind
-	| TwoPairResult
-	| PairResult
-	| HighResult;
-
-export type StraightFlushResult = ResultBase<'straight-flush'>;
-export type FourKind = ResultBase<'four-kind'>;
-export type FullHouseResult = ResultBase<'full-house'>;
-export type FlushResult = ResultBase<'flush'>;
-export type StraightResult = ResultBase<'straight'>;
-export type ThreeKind = ResultBase<'three-kind'>;
-export type TwoPairResult = ResultBase<'two-pair'>;
-export type PairResult = ResultBase<'pair'>;
-export type HighResult = ResultBase<'high'>;
-
-export type ResultType = Result extends { type: infer T } ? T : never;
-
-export const RESULT_TYPES: ResultType[] = [
-	'straight-flush',
-	'four-kind',
-	'full-house',
-	'flush',
-	'straight',
-	'three-kind',
-	'two-pair',
-	'pair',
-	'high',
-];
+import { CardValue, CARD_VALUE_BITMASK, CARD_SUIT_BITMASK } from './redux/game';
+import { RESULT_TYPES } from './helpers';
 
 const checkStraight = (cards: Card[]): Result | null => {
-	console.log('CCC0', cardsToString(cards));
 	cards = cards
 		// In order to deal with high/low aces, for straights ONLY, we give the player an imaginary
 		// card with a value of 1 (low ace).
 		.flatMap((val) =>
-			(val & CARD_VALUE_BITMASK) === CardValue.ACE ? [val, CardValue.ACE] : [val],
+			(val & CARD_VALUE_BITMASK) === CardValue.ACE
+				? // Low ace of the same suit
+				  [val, (1 << 4) | (val & CARD_SUIT_BITMASK)]
+				: [val],
 		)
 		// Re-sort in descending order
-		.sort((a, b) => b - a);
-	console.log('CCC2', cardsToString(cards.map((x) => x)));
+		.sort((a, b) => b - a)
+		// We want to deduplicate cards with the same face value. We do this by removing any card
+		// with the same face value as the previous card. (The array has already been sorted.)
+		.filter((card, i, cards) => {
+			if (i === 0) return true;
+			if (cards[i - 1] >> 4 === card >> 4) return false;
+			return true;
+		});
 
 	outer_loop: for (let startIdx = 0; startIdx < 3; startIdx++) {
 		let lastVal = cards[startIdx];
-		for (
-			let curIdx = startIdx + 1, cardsMatched = 0;
-			cardsMatched < 5 && curIdx < cards.length;
-			curIdx++, cardsMatched++
-		) {
-			if ((lastVal & CARD_VALUE_BITMASK) === (cards[curIdx] & CARD_VALUE_BITMASK)) {
-				cardsMatched--;
-				continue;
-			}
-			if (lastVal + (1 << 4) !== cards[curIdx]) continue outer_loop;
+		for (let curIdx = startIdx + 1; curIdx - startIdx < 5 && curIdx < cards.length; curIdx++) {
+			if ((lastVal >> 4) - 1 !== cards[curIdx] >> 4) continue outer_loop;
 			lastVal = cards[curIdx];
 		}
 
 		return {
 			type: 'straight',
 			priority: cards[startIdx],
-			cards: cards.slice(startIdx, startIdx + 5),
+			cards: cards.slice(startIdx, startIdx + 5).map((card) =>
+				// If the card is a low ace, convert it back to a high ace of the same suit
+				card >> 4 === 1 ? CardValue.ACE | (card & CARD_SUIT_BITMASK) : card,
+			),
 		};
 	}
 
@@ -79,11 +46,10 @@ export default function detectWin(cards: Card[]): Result[] {
 		// Sort in descending order
 		.sort((a, b) => b - a);
 
-	console.log('CCCA', cardsToString(cards));
 	const results = [checkStraight(cards)].filter((x) => x !== null) as Result[];
 
 	return results.sort((a, b) => {
 		if (a.type === b.type) return b.priority - a.priority;
-		return b.type - a.type;
+		return RESULT_TYPES.indexOf(b.type) - RESULT_TYPES.indexOf(a.type);
 	});
 }
