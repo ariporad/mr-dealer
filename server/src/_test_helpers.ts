@@ -60,7 +60,7 @@ export const desc = (suiteName: string) => (descriptor: string | TemplateStrings
 
 			if (!isResultType(type)) throw new Error(`Illegal Result Type: ${type}!`);
 
-			it(descriptor, () => {
+			it(descriptor.trim(), () => {
 				let results = detectWin(cardsFromString(allCards));
 
 				let expector = operator === '->' ? expect(results) : expect(results).not;
