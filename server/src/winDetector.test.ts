@@ -22,6 +22,11 @@ desc('Flush')`
 
 desc('Straight Flush')`
 	2C 3C 4C 5C 6C 3H 3S -> straight-flush(6C): 2C 3C 4C 5C 6C
+	2C 3C 4C 5C 6C 7C 8H -> straight-flush: 3C 4C 5C 6C 7C
+
+
 	2C 3H 4C 5C 6H JC QC !-> straight-flush
+
+	# Multiple suits for a card that makes a straight, but neither are part of the flush
 	2S 2D 3H 4H 5H 6H QH !-> straight-flush
 `;

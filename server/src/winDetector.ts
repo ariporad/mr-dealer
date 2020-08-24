@@ -1,14 +1,34 @@
 import { CardValue, CARD_VALUE_BITMASK, CARD_SUIT_BITMASK, CardSuit } from './redux/game';
 import { RESULT_TYPES } from './helpers';
 
+const cardsAreEqual = (a: Card[], b: Card[]): boolean => {
+	a = a.sort((a, b) => b - a);
+	b = b.sort((a, b) => b - a);
+
+	if (a.length !== a.length) {
+		throw new Error('Sanity Check failed: hand lengths vary!');
+	}
+
+	for (let i = 0; i < a.length; i++) {
+		if (a[i] !== b[i]) return false;
+	}
+
+	return true;
+};
+
 /**
- * @param flushSuitHint the suit of the flush result, if one exists. This function does not check
- *                      for straight flushes. However, this hint is used to pick the card that will
- *                      produce a straight flush in the case where multiple cards with the same
- *                      value are available. For example (hint is `CardSuit.HEARTS`):
- *                      `2C 2S 2H 3H 4H 5H 6H -> straight: 2H 3H 4H 5H 6H`
+ * @param flush the flush result, if one exists. This function does not check for straight flushes.
+ *              However, this hint is used to pick the card that will produce a straight flush in the
+ * 				case where multiple cards with the same value are available.
+ * 				For example (hint is `CardSuit.HEARTS`):
+ * 				`2C 2S 2H 3H 4H 5H 6H -> straight: 2H 3H 4H 5H 6H`
  */
-const checkStraight = (cards: Card[], flushSuitHint: CardSuit | null): Result | null => {
+const checkStraight = (
+	cards: Card[],
+	flush: FlushResult | null,
+): StraightResult | StraightFlushResult | null => {
+	const flushSuit = flush && flush.cards[0] & CARD_SUIT_BITMASK;
+
 	cards = cards
 		// In order to deal with high/low aces, for straights ONLY, we give the player an imaginary
 		// card with a value of 1 (low ace).
@@ -27,19 +47,21 @@ const checkStraight = (cards: Card[], flushSuitHint: CardSuit | null): Result | 
 
 			// Drop this card if it has the same value as the previous one, UNLESS it's the same
 			// suit as the flush hint.
-			if ((card & CARD_SUIT_BITMASK) !== flushSuitHint && cards[i - 1] >> 4 === card >> 4) {
+			if ((card & CARD_SUIT_BITMASK) !== flushSuit && cards[i - 1] >> 4 === card >> 4) {
 				return false;
 			} else if (
 				// To accomidate for the previous caveat, we need to drop this card if it has the
 				// same value as the next one AND the next one has the same suit as the flush hint.
 				i < cards.length - 1 && // is there another card after this one?
 				cards[i + 1] >> 4 === card >> 4 && // is the next card the same value as this one?
-				(cards[i + 1] & CARD_SUIT_BITMASK) === flushSuitHint // is the next card the right suit?
+				(cards[i + 1] & CARD_SUIT_BITMASK) === flushSuit // is the next card the right suit?
 			) {
 				return false;
 			}
 			return true;
 		});
+
+	let result: StraightResult | null = null;
 
 	outer_loop: for (let startIdx = 0; startIdx <= cards.length - 5; startIdx++) {
 		let lastVal = cards[startIdx];
@@ -48,20 +70,40 @@ const checkStraight = (cards: Card[], flushSuitHint: CardSuit | null): Result | 
 			lastVal = cards[curIdx];
 		}
 
-		return {
+		const selectedCards = cards.slice(startIdx, startIdx + 5).map((card) =>
+			// If the card is a low ace, convert it back to a high ace of the same suit
+			card >> 4 === 1 ? CardValue.ACE | (card & CARD_SUIT_BITMASK) : card,
+		);
+
+		// If we've found a straight flush (which will be the highest possible straight flush), we
+		// just want to return that.
+		if (flush && cardsAreEqual(selectedCards, flush.cards)) {
+			return {
+				type: 'straight-flush',
+				// Straight-flushes are relatively ranked identically to straights, so we can reuse
+				// the same priority
+				priority: selectedCards[0],
+				cards: selectedCards,
+			};
+		}
+
+		// If we didn't find a straight flush, we want to see if we already found a straight. If we
+		// did, then that straight (which will be higher than this one) is better, so keep it.
+		// Otherwise, if we haven't found a straight yet (`result === null`), we want to save this
+		// one. We don't return it yet in case we later find a straight flush, which would be even
+		// better.
+		result = result || {
 			type: 'straight',
-			priority: cards[startIdx],
-			cards: cards.slice(startIdx, startIdx + 5).map((card) =>
-				// If the card is a low ace, convert it back to a high ace of the same suit
-				card >> 4 === 1 ? CardValue.ACE | (card & CARD_SUIT_BITMASK) : card,
-			),
+			priority: selectedCards[0],
+			cards: selectedCards,
 		};
 	}
 
-	return null;
+	// Well, we didn't find a straight flush. Return a straight if we found one, otherwise null.
+	return result;
 };
 
-const checkFlush = (cards: Card[]): Result | null => {
+const checkFlush = (cards: Card[]): FlushResult | null => {
 	// Sort the cards in order of suit, then by value. We do this by moving the suit to the 9-13th
 	// most significant bits (we leave the old suit too because it doesn't matter):
 	// 0000 0000 0000 0000 0000 0000 0000 0000
@@ -110,41 +152,14 @@ const checkFlush = (cards: Card[]): Result | null => {
 	return null;
 };
 
-const checkStraightFlush = (straight: Result | null, flush: Result | null): Result | null => {
-	if (straight === null || flush === null) return null;
-
-	const straightCards = straight.cards.sort((a, b) => b - a);
-	const flushCards = flush.cards.sort((a, b) => b - a);
-
-	if (straightCards.length !== flushCards.length) {
-		throw new Error('Sanity Check failed: hand lengths vary!');
-	}
-
-	for (let i = 0; i < straightCards.length; i++) {
-		if (straightCards[i] !== flushCards[i]) return null;
-	}
-
-	return {
-		type: 'straight-flush',
-		// Straight-flushes are relatively ranked just like straights, so we can reuse the priority
-		priority: straight.priority,
-		// We use the cards directly from the straight instead of from straightCards because, in the
-		// case of a low ace, the sorted order may vary from the user-facing order.
-		cards: straight.cards,
-	};
-};
-
 export default function detectWin(cards: Card[]): Result[] {
 	cards = cards
 		// Sort in descending order
 		.sort((a, b) => b - a);
 
 	const flush = checkFlush(cards);
-	const straight = checkStraight(cards, flush && flush.cards[0] & CARD_SUIT_BITMASK);
 
-	const results = [straight, flush, checkStraightFlush(straight, flush)].filter(
-		(x) => x !== null,
-	) as Result[];
+	const results = [flush, checkStraight(cards, flush)].filter((x) => x !== null) as Result[];
 
 	return results.sort((a, b) => {
 		if (a.type === b.type) return b.priority - a.priority;
