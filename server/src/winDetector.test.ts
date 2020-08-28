@@ -24,9 +24,25 @@ desc('Straight Flush')`
 	2C 3C 4C 5C 6C 3H 3S -> straight-flush(6C): 2C 3C 4C 5C 6C
 	2C 3C 4C 5C 6C 7C 8H -> straight-flush: 3C 4C 5C 6C 7C
 
-
 	2C 3H 4C 5C 6H JC QC !-> straight-flush
 
 	# Multiple suits for a card that makes a straight, but neither are part of the flush
 	2S 2D 3H 4H 5H 6H QH !-> straight-flush
+`;
+
+desc('Pairs')`
+	7H 7C 7D 7S 8C JS 2S -> four-kind: 7H 7C 7D 7S JS
+	QH QC QD QS KS 3H 9D -> four-kind: QH QC QD QS KS
+
+	7H 7C 7D 8S 8C JS 2S -> full-house: 7H 7C 7D 8S 8C
+	QH QC QD KS KD 3H 9D -> full-house: QH QC QD KS KD
+
+	7H 7C 7D 4S 8C JS 2S -> three-kind: 7H 7C 7D JS 8C
+	QH QC QD 4S KS 3H 9D -> three-kind: QH QC QD KS 9D
+
+	2C 2D 4S 5C 6D 9D JH -> pair: 2C 2D JH 9D 6D
+	QH QS 9H 4D 2S 6C JH -> pair: QH QS JH 9H 6C
+
+	KH KD 3H 3S 4D 7C 9H -> two-pair: KH KD 3H 3S 9H
+	4H 4C 5S 5D 6D 7H 0C -> two-pair: 5S 5D 4H 4C 0C
 `;

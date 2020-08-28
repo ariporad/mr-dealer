@@ -1,9 +1,10 @@
 import { CardValue, CARD_VALUE_BITMASK, CARD_SUIT_BITMASK, CardSuit } from './redux/game';
 import { RESULT_TYPES } from './helpers';
+import { count } from 'console';
 
 const cardsAreEqual = (a: Card[], b: Card[]): boolean => {
-	a = a.sort((a, b) => b - a);
-	b = b.sort((a, b) => b - a);
+	a = [...a].sort((a, b) => b - a);
+	b = [...b].sort((a, b) => b - a);
 
 	if (a.length !== a.length) {
 		throw new Error('Sanity Check failed: hand lengths vary!');
@@ -109,7 +110,7 @@ const checkFlush = (cards: Card[]): FlushResult | null => {
 	// 0000 0000 0000 0000 0000 0000 0000 0000
 	//                          ^^^^ ^^^^ ^^^^
 	//                      New Suit  Val Old Suit
-	cards = cards.sort(
+	cards = [...cards].sort(
 		(a, b) => (((b & CARD_SUIT_BITMASK) << 8) | b) - (((a & CARD_SUIT_BITMASK) << 8) | a),
 	);
 
@@ -152,14 +153,99 @@ const checkFlush = (cards: Card[]): FlushResult | null => {
 	return null;
 };
 
+function detectRest(
+	cards: Card[],
+): FourKindResult | FullHouseResult | ThreeKindResult | TwoPairResult | PairResult | null {
+	const cardsByValue: Card[][] = [];
+	for (const card of cards) {
+		const value = card >> 4;
+		cardsByValue[value] = [...(cardsByValue[value] || []), card];
+	}
+
+	const fillCards = (partialCards: Card[]): Card[] => {
+		partialCards = [...partialCards];
+
+		while (partialCards.length < 5) {
+			const card = cards.find((c) => !partialCards.includes(c));
+			if (!card) throw new Error('sanity check failed!');
+			partialCards.push(card);
+		}
+
+		return partialCards;
+	};
+
+	const generatePriority = (cards: Card[] | number): number => {
+		if (typeof cards === 'number') return cards;
+		return cards.reduce((priority, card) => (priority << 4) + (card >> 4), 0);
+	};
+
+	const generateResults = <T extends ResultType>(
+		type: T,
+		partialCards: Card[],
+		priority: number[] | number,
+	): ResultBase<T> => ({
+		type,
+		cards: fillCards(partialCards),
+		priority: generatePriority(priority),
+	});
+
+	const countResults = cardsByValue
+		.map((cards, value) => ({
+			cards,
+			value,
+			count: (cards || []).length,
+		}))
+		.filter((result) => result.count >= 2)
+		.sort((a, b) => (b.count << 16) + b.value - ((a.count << 16) + a.value));
+
+	if (countResults.length === 0) {
+		const selectedCards = fillCards(cards.slice(0, 5));
+		return generateResults('full-house', selectedCards, selectedCards);
+	}
+
+	const selectedCards = fillCards(countResults[0].cards);
+	if (countResults[0].count === 4) {
+		return generateResults('four-kind', selectedCards, [selectedCards[0], selectedCards[4]]);
+	} else if (countResults[0].count === 3 && countResults[1]) {
+		return generateResults(
+			'full-house',
+			[...countResults[0].cards, ...countResults[1].cards],
+			[countResults[0].cards[0], countResults[1].cards[0]],
+		);
+	} else if (countResults[0].count === 3) {
+		return generateResults('three-kind', selectedCards, [
+			selectedCards[0],
+			selectedCards[3],
+			selectedCards[4],
+		]);
+	} else if (countResults[0].count === 2 && countResults[1]) {
+		return generateResults(
+			'two-pair',
+			[...countResults[0].cards, ...countResults[1].cards],
+			[countResults[0].cards[0], countResults[1].cards[0], selectedCards[4]],
+		);
+	} else if (countResults[0].count == 2) {
+		return generateResults(
+			'pair',
+			selectedCards,
+			// every card but the 1st one, which by definition has the same value as the 2nd one.
+			selectedCards.slice(1),
+		);
+	}
+
+	throw new Error('This should never be reached!');
+}
+
 export default function detectWin(cards: Card[]): Result[] {
-	cards = cards
+	cards = [...cards]
 		// Sort in descending order
 		.sort((a, b) => b - a);
 
 	const flush = checkFlush(cards);
 
-	const results = [flush, checkStraight(cards, flush)].filter((x) => x !== null) as Result[];
+	const results = [flush, checkStraight(cards, flush), detectRest(cards)].filter(
+		(x) => x !== null,
+	) as Result[];
 
 	return results.sort((a, b) => {
 		if (a.type === b.type) return b.priority - a.priority;
