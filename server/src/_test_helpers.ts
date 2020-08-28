@@ -1,4 +1,4 @@
-import detectWin from './winDetector';
+import { calculateBestHand } from './winDetector';
 import { cardsToString, cardsFromString, cardFromString } from './redux/game';
 import { isResultType } from './helpers';
 
@@ -61,7 +61,7 @@ export const desc = (suiteName: string) => (descriptor: string | TemplateStrings
 			if (!isResultType(type)) throw new Error(`Illegal Result Type: ${type}!`);
 
 			it(descriptor.trim(), () => {
-				let results = detectWin(cardsFromString(allCards));
+				let results = calculateBestHand(cardsFromString(allCards));
 
 				let expector = operator === '->' ? expect(results) : expect(results).not;
 

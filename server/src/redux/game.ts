@@ -2,6 +2,16 @@
 
 import { createSlice, PayloadAction, createSelector } from '@reduxjs/toolkit';
 import { RootState } from '.';
+import detectWin from '../winDetector';
+import { StatusCodeError } from 'request-promise/errors';
+
+function assertExists<T>(thing: T | null | undefined, message = 'Assertion Failed'): T {
+	if (thing === null || thing === undefined) {
+		throw new Error(message);
+	}
+
+	return thing;
+}
 
 const ANTE_AMOUNT = 1;
 
@@ -75,6 +85,7 @@ export interface PlayerState {
 	folded: boolean;
 	bets: number[];
 	hand: Hand | null;
+	result: Result | null;
 }
 
 export interface GameState {
@@ -82,6 +93,7 @@ export interface GameState {
 	players: PlayerState[];
 	currentPlayer: number;
 	table: Card[];
+	winners: number[] | null;
 }
 
 const initialState: GameState = {
@@ -89,6 +101,7 @@ const initialState: GameState = {
 	players: [],
 	currentPlayer: 0,
 	table: [],
+	winners: null,
 };
 
 type AddUserAction = PayloadAction<{ name: string }>;
@@ -100,7 +113,7 @@ const { reducer, actions, name } = createSlice({
 	reducers: {
 		addUser(state, { payload: { name } }: AddUserAction) {
 			const id = state.players.length;
-			state.players.push({ name, id, folded: false, bets: [], hand: null });
+			state.players.push({ name, id, folded: false, bets: [], hand: null, result: null });
 		},
 
 		start(state) {
@@ -144,6 +157,17 @@ const { reducer, actions, name } = createSlice({
 
 				if (state.currentPlayer === state.players.length) state.currentPlayer = 0;
 			} while (state.players[state.currentPlayer].folded && state.status < GameStatus.ENDED);
+
+			if (state.status === GameStatus.ENDED) {
+				const { winningResults, results } = detectWin(
+					state.table,
+					state.players.map((p) => ({ hand: assertExists(p.hand), folded: p.folded })),
+				);
+
+				results.forEach(({ id, result }) => (state.players[id].result = result));
+
+				state.winners = winningResults.map((r) => r.id);
+			}
 		},
 	},
 });
@@ -189,11 +213,13 @@ export const getUpdateForPlayer = (playerId: number, gameId: string) =>
 				table: visibleCards,
 				currentPlayer: state.currentPlayer,
 				status: state.status,
-				players: state.players.map(({ id, name, folded, bets }) => ({
+				winners: state.winners,
+				players: state.players.map(({ id, name, folded, bets, result }) => ({
 					id,
 					name,
 					folded,
 					bets,
+					result,
 				})),
 			};
 		},

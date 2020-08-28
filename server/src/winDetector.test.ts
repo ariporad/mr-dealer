@@ -45,4 +45,6 @@ desc('Pairs')`
 
 	KH KD 3H 3S 4D 7C 9H -> two-pair: KH KD 3H 3S 9H
 	4H 4C 5S 5D 6D 7H 0C -> two-pair: 5S 5D 4H 4C 0C
+	
+	AD 3C 6D 4H 9D 0S 2S -> high: AD 0S 9D 6D 4H
 `;

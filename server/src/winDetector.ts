@@ -155,7 +155,14 @@ const checkFlush = (cards: Card[]): FlushResult | null => {
 
 function detectRest(
 	cards: Card[],
-): FourKindResult | FullHouseResult | ThreeKindResult | TwoPairResult | PairResult | null {
+):
+	| FourKindResult
+	| FullHouseResult
+	| ThreeKindResult
+	| TwoPairResult
+	| PairResult
+	| HighResult
+	| null {
 	const cardsByValue: Card[][] = [];
 	for (const card of cards) {
 		const value = card >> 4;
@@ -200,7 +207,7 @@ function detectRest(
 
 	if (countResults.length === 0) {
 		const selectedCards = fillCards(cards.slice(0, 5));
-		return generateResults('full-house', selectedCards, selectedCards);
+		return generateResults('high', selectedCards, selectedCards);
 	}
 
 	const selectedCards = fillCards(countResults[0].cards);
@@ -236,19 +243,50 @@ function detectRest(
 	throw new Error('This should never be reached!');
 }
 
-export default function detectWin(cards: Card[]): Result[] {
+type PlayerResult = { id: number; result: Result; folded: boolean };
+
+export function calculateBestHand(cards: Card[]): Result[] {
 	cards = [...cards]
 		// Sort in descending order
 		.sort((a, b) => b - a);
 
 	const flush = checkFlush(cards);
 
-	const results = [flush, checkStraight(cards, flush), detectRest(cards)].filter(
+	return [flush, checkStraight(cards, flush), detectRest(cards)].filter(
 		(x) => x !== null,
 	) as Result[];
+}
 
-	return results.sort((a, b) => {
-		if (a.type === b.type) return b.priority - a.priority;
-		return RESULT_TYPES.indexOf(b.type) - RESULT_TYPES.indexOf(a.type);
-	});
+export default function detectWin(
+	table: Card[],
+	hands: { folded: boolean; hand: [Card, Card] }[],
+): { winningResults: PlayerResult[]; results: PlayerResult[] } {
+	const allPlayerResults = hands.flatMap(({ folded, hand }, id) =>
+		calculateBestHand([...hand, ...table]).map((result) => ({ id, result, folded })),
+	);
+
+	const sortedPlayerResults = allPlayerResults
+		.sort(({ result: a, folded: foldedA }, { folded: foldedB, result: b }) => {
+			if (foldedA && !foldedB) return 1;
+			if (foldedB && !foldedA) return -1;
+
+			if (a.type === b.type) return b.priority - a.priority;
+			return RESULT_TYPES.indexOf(b.type) - RESULT_TYPES.indexOf(a.type);
+		})
+		// Only allow one result per player
+		.filter((playerResult, i, arr) => i === arr.findIndex((r) => r.id === playerResult.id));
+
+	const winningPlayerResults: PlayerResult[] = [sortedPlayerResults[0]];
+
+	for (let i = 1; i < sortedPlayerResults.length; i++) {
+		if (
+			sortedPlayerResults[i].result.type !== sortedPlayerResults[0].result.type ||
+			sortedPlayerResults[i].result.priority !== sortedPlayerResults[0].result.priority
+		) {
+			break;
+		}
+		winningPlayerResults.push(sortedPlayerResults[i]);
+	}
+
+	return { results: sortedPlayerResults, winningResults: winningPlayerResults };
 }
