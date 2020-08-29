@@ -8,7 +8,6 @@ import createStore from './redux';
 import {
 	addUser,
 	getNextPlayerId,
-	getGameState,
 	getCurrentPlayer,
 	advance,
 	getUpdateForPlayer,
@@ -50,7 +49,6 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 	}
 
 	const id = getNextPlayerId(game.getState());
-	game.dispatch(addUser({ name }));
 
 	socket.on('message', (msg: ClientMessage) => {
 		if (msg.type === 'start-game') {
@@ -62,6 +60,7 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 				} as ServerMessage);
 				return;
 			}
+
 			if (getGameStatus(game.getState()) !== GameStatus.PRESTART) {
 				socket.send({
 					type: 'err',
@@ -70,6 +69,7 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 				} as ServerMessage);
 				return;
 			}
+
 			game.dispatch(start());
 		} else if (msg.type === 'advance') {
 			const { amount, fold } = msg;
@@ -117,14 +117,13 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 		} as ServerMessage);
 	});
 
-	socket.send({
-		type: 'update',
-		update: getUpdateForPlayer(id, gameId)(game.getState()),
-	} as ServerMessage);
+	game.dispatch(addUser({ name }));
 }
 
 io.on('connection', (socket) => {
 	console.log('Socket connected');
+
+	socket.send({ type: 'server-info', version: 1 } as ServerMessage);
 
 	socket.on('message', (msg: ClientMessage) => {
 		if (msg.type === 'create-game') {

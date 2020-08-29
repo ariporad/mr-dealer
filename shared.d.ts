@@ -44,7 +44,8 @@ type StartGameMessage = { type: 'start-game' };
 
 type ErrorCode = 'EBADMOVE' | 'EBADGAMEID' | 'EBADBET' | 'EBADPERMS' | 'EBADCMD';
 
-type ServerMessage = ErrorMessage | GameUpdateMessage;
+type ServerMessage = ErrorMessage | GameUpdateMessage | ServerInfoMessage;
+type ServerInfoMessage = { type: 'server-info'; version: 1 };
 type ErrorMessage = { type: 'err'; code: ErrorCode; message: string };
 type GameUpdateMessage = { type: 'update'; update: GameUpdate };
 

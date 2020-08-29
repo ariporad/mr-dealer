@@ -40,6 +40,9 @@ export function createPlayerController({
 
 	socket.on('message', (msg: ServerMessage) => {
 		switch (msg.type) {
+			case 'server-info':
+				console.log('Got server info:', msg);
+				break;
 			case 'update':
 				gameUpdate = msg.update;
 				gameId = msg.update.gameId;
