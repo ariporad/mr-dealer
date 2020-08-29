@@ -22,6 +22,7 @@ export interface PlayerController {
 	isCurrentPlayer(): boolean;
 	didFold(): boolean;
 	getGameId(): string;
+	didWin(): boolean;
 }
 
 export function createPlayerController({
@@ -119,6 +120,10 @@ export function createPlayerController({
 
 		getGameId(): string {
 			return gameId || this.getGameUpdate().gameId;
+		},
+
+		didWin(): boolean {
+			return !!this.getGameUpdate().winners?.includes(this.getId());
 		},
 	};
 }

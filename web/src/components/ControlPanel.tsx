@@ -22,6 +22,7 @@ function ControlPanelBody({ onJoin }: { onJoin: (gameId: string) => void }) {
 				'control-panel',
 				playerController.isCurrentPlayer() && 'control-panel-current-player',
 				playerController.didFold() && 'control-panel-folded',
+				playerController.didWin()  && 'control-panel-won'
 			]
 				.filter((x) => !!x)
 				.join(' ')}

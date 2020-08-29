@@ -20,6 +20,7 @@ export default function PlayView() {
 			<hr />
 			<p>Game Status: {gameUpdate.status}</p>
 			<p>Current Player: {gameUpdate.currentPlayer}</p>
+			{gameUpdate.winners && <p>Winners: {gameUpdate.winners.join(', ')}</p>}
 			<p>
 				<h3>Players:</h3>
 				<table>
@@ -33,6 +34,7 @@ export default function PlayView() {
 							<th>Flop</th>
 							<th>Turn</th>
 							<th>River</th>
+							<th>Result</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -44,6 +46,11 @@ export default function PlayView() {
 										gameUpdate.currentPlayer === player.id ? 'bold' : 'normal',
 									textDecoration: player.folded ? 'line-through' : 'none',
 									fontStyle: gameUpdate.id === player.id ? 'italic' : 'normal',
+									backgroundColor: gameUpdate.winners?.includes(player.id)
+										? 'rgba(0, 255, 0, 0.2)'
+										: gameUpdate.players[player.id].folded
+										? 'rgba(255,0,0,.2)'
+										: 'rgba(0,0,0,0)',
 								}}
 							>
 								<td>{player.id}</td>
@@ -54,6 +61,16 @@ export default function PlayView() {
 								<td>${player.bets[2]}</td>
 								<td>${player.bets[3]}</td>
 								<td>${player.bets[4]}</td>
+								<td>
+									{player.result ? (
+										<>
+											{`${player.result.type}(${player.result.priority}): `}
+											<CardContainer cards={player.result.cards} />
+										</>
+									) : (
+										'None'
+									)}
+								</td>
 							</tr>
 						))}
 					</tbody>

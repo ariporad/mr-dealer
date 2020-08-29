@@ -17,11 +17,13 @@ interface GameUpdate {
 	table: Card[];
 	currentPlayer: number;
 	status: GameStatus;
+	winners: number[] | null;
 	players: {
 		id: number;
 		name: string;
 		folded: boolean;
 		bets: number[];
+		result: Result | null;
 	}[];
 }
 
@@ -56,7 +58,7 @@ type Result =
 	| StraightResult
 	| FlushResult
 	| FullHouseResult
-	| FourKind
+	| FourKindResult
 	| StraightFlushResult;
 
 type HighResult = ResultBase<'high'>;
@@ -66,7 +68,7 @@ type ThreeKindResult = ResultBase<'three-kind'>;
 type StraightResult = ResultBase<'straight'>;
 type FlushResult = ResultBase<'flush'>;
 type FullHouseResult = ResultBase<'full-house'>;
-type FourKind = ResultBase<'four-kind'>;
+type FourKindResult = ResultBase<'four-kind'>;
 type StraightFlushResult = ResultBase<'straight-flush'>;
 
 type ResultType = Result extends ResultBase<infer T> ? T : never;

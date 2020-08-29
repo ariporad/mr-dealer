@@ -30,6 +30,10 @@ body,
 	border: 3px solid black;
 }
 
+.control-panel.control-panel-won {
+	background-color: #9c9;
+}
+
 .control-panel-folded {
 	background-color: #fbb;
 }
