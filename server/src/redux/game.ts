@@ -158,6 +158,12 @@ const { reducer, actions, name } = createSlice({
 				if (state.currentPlayer === state.players.length) state.currentPlayer = 0;
 			} while (state.players[state.currentPlayer].folded && state.status < GameStatus.ENDED);
 
+			// If there's only one player left, they win
+			if (state.players.filter((player) => !player.folded).length <= 1) {
+				state.currentPlayer = 0;
+				state.status = GameStatus.ENDED;
+			}
+
 			if (state.status === GameStatus.ENDED) {
 				const { winningResults, results } = detectWin(
 					state.table,
@@ -167,6 +173,7 @@ const { reducer, actions, name } = createSlice({
 				results.forEach(({ id, result }) => (state.players[id].result = result));
 
 				state.winners = winningResults.map((r) => r.id);
+				state.currentPlayer = state.winners[0];
 			}
 		},
 	},
