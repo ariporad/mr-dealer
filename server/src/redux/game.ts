@@ -86,6 +86,7 @@ export interface PlayerState {
 	bets: number[];
 	hand: Hand | null;
 	result: Result | null;
+	chips: number;
 }
 
 export interface GameState {
@@ -113,7 +114,15 @@ const { reducer, actions, name } = createSlice({
 	reducers: {
 		addUser(state, { payload: { name } }: AddUserAction) {
 			const id = state.players.length;
-			state.players.push({ name, id, folded: false, bets: [], hand: null, result: null });
+			state.players.push({
+				name,
+				id,
+				folded: false,
+				bets: [],
+				hand: null,
+				result: null,
+				chips: 100,
+			});
 		},
 
 		start(state) {
@@ -143,7 +152,9 @@ const { reducer, actions, name } = createSlice({
 				player.folded = true;
 			} else {
 				player.bets[state.status] = amount;
+				player.chips -= amount;
 			}
+
 			do {
 				state.currentPlayer++;
 

@@ -106,6 +106,16 @@ function addUserToGame(socket: Socket, name: string, gameId: string) {
 				return;
 			}
 
+			if (!fold && amount > game.getState().game.players[id].chips) {
+				socket.send({
+					type: 'err',
+					code: 'EBADBET',
+					message: `You can't bet more chips than you have! (Currently $${
+						game.getState().game.players[id].chips
+					})`,
+				} as ServerMessage);
+				return;
+			}
 			game.dispatch(advance({ amount, fold }));
 		}
 	});
